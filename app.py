@@ -4,14 +4,21 @@ from datetime import datetime
 
 st.title("Survey Results & Sample Matcher 📊")
 
-# Subir archivos
-dd_file = st.file_uploader("Upload DDfile (CSV)", type="csv")
-phone_file = st.file_uploader("Upload Phone Sample (CSV)", type="csv")
-online_file = st.file_uploader("Upload Online Sample (CSV)", type="csv")
+# Solo mostrar si los archivos existen
+if dd_file is not None:
+    dd = pd.read_csv(dd_file)
+    st.write("📂 DDfile preview:")
+    st.write(dd.head())
 
-st.write(dd_file.head())
-st.write(phone_file.head())
-st.write(online_file.head())
+if phone_file is not None:
+    phone = pd.read_csv(phone_file)
+    st.write("📂 Phone Sample preview:")
+    st.write(phone.head())
+
+if online_file is not None:
+    online = pd.read_csv(online_file)
+    st.write("📂 Online Sample preview:")
+    st.write(online.head())
 
 
 
