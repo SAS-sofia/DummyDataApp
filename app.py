@@ -9,9 +9,9 @@ dd_file = st.file_uploader("Upload DDfile (CSV)", type="csv")
 phone_file = st.file_uploader("Upload Phone Sample (CSV)", type="csv")
 online_file = st.file_uploader("Upload Online Sample (CSV)", type="csv")
 
-st.write(dd.head())
-st.write(phone.head())
-st.write(online.head())
+st.write(dd_file.head())
+st.write(phone_file.head())
+st.write(online_file.head())
 
 
 
