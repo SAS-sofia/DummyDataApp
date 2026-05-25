@@ -1,2 +1,2 @@
-# DummyDataApp Dependencies
-# Add your project dependencies here
+pandas
+streamlit
