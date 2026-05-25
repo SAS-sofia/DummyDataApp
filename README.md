@@ -1,22 +1,13 @@
-# DummyDataApp
+# Survey Results & Sample Matcher App
 
-A Python application for generating dummy data for testing purposes.
+This Streamlit app allows users to:
+- Upload survey results (DDfile) and sample files (Phone/Online).
+- Choose columns dynamically for matching or direct replacement.
+- Process data to align survey runs with sample information.
+- Download the final processed CSV.
 
-## Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Usage
-
-Run the application:
+## How to run locally
 ```bash
-python app.py
+pip install -r requirements.txt
+streamlit run app.py
 ```
-
-## License
-
-MIT
