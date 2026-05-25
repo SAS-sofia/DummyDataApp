@@ -9,6 +9,12 @@ dd_file = st.file_uploader("Upload DDfile (CSV)", type="csv")
 phone_file = st.file_uploader("Upload Phone Sample (CSV)", type="csv")
 online_file = st.file_uploader("Upload Online Sample (CSV)", type="csv")
 
+st.write(dd.head())
+st.write(phone.head())
+st.write(online.head())
+
+
+
 # Selector de modo
 mode = st.radio("Choose processing mode:", ["Match", "Direct Replacement"])
 
