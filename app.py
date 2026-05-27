@@ -1,105 +1,55 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime
 
 st.title("Survey Results & Sample Matcher 📊")
 
-# Subir archivos
-dd_file = st.file_uploader("Upload DDfile (CSV)", type="csv")
-phone_file = st.file_uploader("Upload Phone Sample (CSV)", type="csv")
-online_file = st.file_uploader("Upload Online Sample (CSV)", type="csv")
-email_file = st.file_uploader("Upload Email Sample (CSV)", type="csv")
+# Bloque para Phone Sample
+st.subheader("📞 Phone Sample Rules")
+st.write("Define aquí las reglas de match y reemplazo para Phone")
 
-if dd_file:
-    dd = pd.read_csv(dd_file)
-    phone = pd.read_csv(phone_file) if phone_file else pd.DataFrame()
-    online = pd.read_csv(online_file) if online_file else pd.DataFrame()
-    email = pd.read_csv(email_file) if email_file else pd.DataFrame()
+# Match
+phone_match_rules = st.experimental_data_editor(
+    [{"DD Column": "", "Sample Column": "", "Action": "Match"}],
+    num_rows="dynamic",
+    key="phone_match"
+)
 
-    st.subheader("Column configuration")
+# Reemplazo
+phone_replace_rules = st.experimental_data_editor(
+    [{"DD Column": "", "Sample Column": "", "Action": "Replace", "Exclusion Column": "", "Exclusion Value": ""}],
+    num_rows="dynamic",
+    key="phone_replace"
+)
 
-    # Selección de columnas para Match
-    dd_match_cols = st.multiselect("DDfile columns to match", dd.columns)
-    sample_match_cols = st.multiselect(
-        "Sample columns to match",
-        list(phone.columns) + list(online.columns) + list(email.columns)
-    )
+# Bloque para Online Sample
+st.subheader("💻 Online Sample Rules")
+st.write("Define aquí las reglas de match y reemplazo para Online")
 
-    # Selección de columnas para Reemplazo
-    dd_replace_cols = st.multiselect("DDfile columns to replace", dd.columns)
-    sample_replace_cols = st.multiselect(
-        "Sample columns to use for replacement",
-        list(phone.columns) + list(online.columns) + list(email.columns)
-    )
+online_match_rules = st.experimental_data_editor(
+    [{"DD Column": "", "Sample Column": "", "Action": "Match"}],
+    num_rows="dynamic",
+    key="online_match"
+)
 
-    final_rows = []
+online_replace_rules = st.experimental_data_editor(
+    [{"DD Column": "", "Sample Column": "", "Action": "Replace", "Exclusion Column": "", "Exclusion Value": ""}],
+    num_rows="dynamic",
+    key="online_replace"
+)
 
-    # Función para asignar sample según mode
-    def assign_sample_row(dd_row):
-        mode = dd_row.get("mode")
-        if mode == 1:  # Landline
-            if "phonetypef" in phone.columns:
-                return phone[phone["phonetypef"] == 1]
-            else:
-                return pd.DataFrame()
-        elif mode == 2:  # Cellphone
-            if "phonetypef" in phone.columns:
-                return phone[phone["phonetypef"] == 2]
-            else:
-                return pd.DataFrame()
-        elif mode == 3:  # Text
-            return online
-        elif mode == 4:  # Email
-            return email
-        else:
-            return pd.DataFrame()
+# Bloque para Email Sample
+st.subheader("📧 Email Sample Rules")
+st.write("Define aquí las reglas de match y reemplazo para Email")
 
-    # Procesamiento
-    for _, row in dd.iterrows():
-        sample = assign_sample_row(row)
-        if sample.empty:
-            continue
+email_match_rules = st.experimental_data_editor(
+    [{"DD Column": "", "Sample Column": "", "Action": "Match"}],
+    num_rows="dynamic",
+    key="email_match"
+)
 
-        row_dict = row.to_dict()
+email_replace_rules = st.experimental_data_editor(
+    [{"DD Column": "", "Sample Column": "", "Action": "Replace", "Exclusion Column": "", "Exclusion Value": ""}],
+    num_rows="dynamic",
+    key="email_replace"
+)
 
-        # --- Fase 1: Match ---
-        if dd_match_cols and sample_match_cols:
-            conditions = True
-            for d_col, s_col in zip(dd_match_cols, sample_match_cols):
-                if s_col in sample.columns:
-                    conditions &= (sample[s_col] == row[d_col])
-            matches = sample[conditions]
-            if not matches.empty:
-                match = matches.iloc[0].to_dict()
-                # Reemplazo en columnas seleccionadas
-                for d_col, s_col in zip(dd_replace_cols, sample_replace_cols):
-                    if s_col in match:
-                        row_dict[d_col] = match.get(s_col, row_dict[d_col])
-                # Adjuntar todas las columnas del sample
-                for col, val in match.items():
-                    if col not in row_dict:
-                        row_dict[col] = val
-                final_rows.append(row_dict)
-                continue
-
-        # --- Fase 2: Reemplazo directo ---
-        match = sample.sample(1).iloc[0].to_dict()
-        for d_col, s_col in zip(dd_replace_cols, sample_replace_cols):
-            if s_col in match:
-                row_dict[d_col] = match.get(s_col, row_dict[d_col])
-        # Adjuntar todas las columnas del sample
-        for col, val in match.items():
-            if col not in row_dict:
-                row_dict[col] = val
-        final_rows.append(row_dict)
-
-    if final_rows:
-        final_table = pd.DataFrame(final_rows)
-        st.write("✅ Processed results:")
-        st.dataframe(final_table)
-
-        # Descargar CSV
-        csv = final_table.to_csv(index=False).encode("utf-8")
-        st.download_button("Download CSV", csv, "final_table.csv", "text/csv")
-    else:
-        st.warning("⚠️ No rows were generated. Check your column selections or mode.")
+st.write("👉 Aquí defines todas las reglas. Cada fila es una regla independiente.")
