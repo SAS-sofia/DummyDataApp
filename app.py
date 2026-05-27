@@ -71,9 +71,14 @@ if dd_file:
             matches = sample[conditions]
             if not matches.empty:
                 match = matches.iloc[0].to_dict()
+                # Reemplazo en columnas seleccionadas
                 for d_col, s_col in zip(dd_replace_cols, sample_replace_cols):
                     if s_col in match:
                         row_dict[d_col] = match.get(s_col, row_dict[d_col])
+                # Adjuntar todas las columnas del sample
+                for col, val in match.items():
+                    if col not in row_dict:
+                        row_dict[col] = val
                 final_rows.append(row_dict)
                 continue
 
@@ -82,6 +87,10 @@ if dd_file:
         for d_col, s_col in zip(dd_replace_cols, sample_replace_cols):
             if s_col in match:
                 row_dict[d_col] = match.get(s_col, row_dict[d_col])
+        # Adjuntar todas las columnas del sample
+        for col, val in match.items():
+            if col not in row_dict:
+                row_dict[col] = val
         final_rows.append(row_dict)
 
     if final_rows:
