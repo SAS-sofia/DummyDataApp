@@ -32,17 +32,18 @@ if dd_file:
 
     # Función para asignar sample según mode
     def assign_sample_row(dd_row):
-        mode = dd_row.get("mode")
-        if mode == 1:
-            return phone[phone["pPhonetype"] == 1]
-        elif mode == 2:
-            return phone[phone["pPhonetype"] == 2]
-        elif mode == 3:
-            return online
-        elif mode == 4:
-            return email
-        else:
-            return pd.DataFrame()
+    mode = dd_row.get("mode")
+    if mode == 1:  # Landline
+        return phone[phone["phonetypef"] == 1]
+    elif mode == 2:  # Cellphone
+        return phone[phone["phonetypef"] == 2]
+    elif mode == 3:  # Text
+        return online
+    elif mode == 4:  # Email
+        return email
+    else:
+        return pd.DataFrame()
+
 
     # Procesamiento
     for _, row in dd.iterrows():
