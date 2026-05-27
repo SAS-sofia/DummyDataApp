@@ -19,12 +19,12 @@ if dd_file:
 
     # --- Phone rules ---
     st.markdown("### 📞 Phone Sample")
-    phone_match_rules = st.experimental_data_editor(
+    phone_match_rules = st.data_editor(
         [{"DD Column": "", "Sample Column": ""}],
         num_rows="dynamic",
         key="phone_match"
     )
-    phone_replace_rules = st.experimental_data_editor(
+    phone_replace_rules = st.data_editor(
         [{"DD Column": "", "Sample Column": "", "Exclusion Column": "", "Exclusion Value": ""}],
         num_rows="dynamic",
         key="phone_replace"
@@ -32,12 +32,12 @@ if dd_file:
 
     # --- Online rules ---
     st.markdown("### 💻 Online Sample")
-    online_match_rules = st.experimental_data_editor(
+    online_match_rules = st.data_editor(
         [{"DD Column": "", "Sample Column": ""}],
         num_rows="dynamic",
         key="online_match"
     )
-    online_replace_rules = st.experimental_data_editor(
+    online_replace_rules = st.data_editor(
         [{"DD Column": "", "Sample Column": "", "Exclusion Column": "", "Exclusion Value": ""}],
         num_rows="dynamic",
         key="online_replace"
@@ -45,12 +45,12 @@ if dd_file:
 
     # --- Email rules ---
     st.markdown("### 📧 Email Sample")
-    email_match_rules = st.experimental_data_editor(
+    email_match_rules = st.data_editor(
         [{"DD Column": "", "Sample Column": ""}],
         num_rows="dynamic",
         key="email_match"
     )
-    email_replace_rules = st.experimental_data_editor(
+    email_replace_rules = st.data_editor(
         [{"DD Column": "", "Sample Column": "", "Exclusion Column": "", "Exclusion Value": ""}],
         num_rows="dynamic",
         key="email_replace"
