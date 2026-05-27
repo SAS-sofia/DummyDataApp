@@ -49,98 +49,91 @@ if dd_file:
         key="replace_rules"
     )
 
-    final_rows = []
-    unmatched_rows = []
+    # Botón para ejecutar procesamiento
+    if st.button("🚀 Aplicar reglas y generar tabla final"):
+        final_rows = []
+        unmatched_rows = []
+        used_indices = {"phone": set(), "online": set(), "email": set()}
 
-    # Track used sample indices per mode
-    used_indices = {"phone": set(), "online": set(), "email": set()}
+        def get_sample(mode):
+            if mode == 1:
+                return phone, "phone"
+            elif mode == 2:
+                return phone, "phone"
+            elif mode == 3:
+                return online, "online"
+            elif mode == 4:
+                return email, "email"
+            else:
+                return pd.DataFrame(), None
 
-    # Función para asignar sample según mode
-    def get_sample(mode):
-        if mode == 1:
-            return phone, "phone"
-        elif mode == 2:
-            return phone, "phone"
-        elif mode == 3:
-            return online, "online"
-        elif mode == 4:
-            return email, "email"
-        else:
-            return pd.DataFrame(), None
+        def apply_rules(row, sample, sample_key, match_rules, replace_rules):
+            row_dict = row.to_dict()
+            match = None
 
-    # Función para aplicar reglas
-    def apply_rules(row, sample, sample_key, match_rules, replace_rules):
-        row_dict = row.to_dict()
+            # --- Match ---
+            if not sample.empty and not match_rules.empty:
+                conditions = pd.Series(True, index=sample.index)
+                for _, rule in match_rules.iterrows():
+                    d_col = rule["DD Column (Match)"]
+                    s_col = rule["Sample Column (Match)"]
+                    if pd.notna(d_col) and pd.notna(s_col) and s_col in sample.columns:
+                        conditions &= (sample[s_col] == row[d_col])
+                matches = sample.loc[conditions]
+                matches = matches.loc[~matches.index.isin(used_indices[sample_key])]
+                if not matches.empty:
+                    match_index = matches.index[0]
+                    used_indices[sample_key].add(match_index)
+                    match = matches.iloc[0].to_dict()
+            else:
+                return None
 
-        # --- Match ---
-        match = None
-        if not sample.empty and not match_rules.empty:
-            conditions = pd.Series(True, index=sample.index)
-            for _, rule in match_rules.iterrows():
-                d_col = rule["DD Column (Match)"]
-                s_col = rule["Sample Column (Match)"]
-                if pd.notna(d_col) and pd.notna(s_col) and s_col in sample.columns:
-                    conditions &= (sample[s_col] == row[d_col])
-            matches = sample.loc[conditions]
-            # Filtrar matches que no hayan sido usados
-            matches = matches.loc[~matches.index.isin(used_indices[sample_key])]
-            if not matches.empty:
-                match_index = matches.index[0]
-                used_indices[sample_key].add(match_index)
-                match = matches.iloc[0].to_dict()
-        else:
-            return None  # sin sample o sin reglas → no adjuntar
+            if match is None:
+                return None
 
-        if match is None:
-            return None
+            # --- Reemplazo ---
+            for _, rule in replace_rules.iterrows():
+                d_col = rule["DD Column (Replace)"]
+                s_col = rule["Sample Column (Replace)"]
+                excl_col = rule["Exclusion Column"]
+                excl_val = rule["Exclusion Value"]
 
-        # --- Reemplazo ---
-        for _, rule in replace_rules.iterrows():
-            d_col = rule["DD Column (Replace)"]
-            s_col = rule["Sample Column (Replace)"]
-            excl_col = rule["Exclusion Column"]
-            excl_val = rule["Exclusion Value"]
-
-            if pd.notna(d_col) and pd.notna(s_col) and s_col in match:
-                # aplicar exclusión sobre el DDfile (comparando como string)
-                if pd.notna(excl_col) and pd.notna(excl_val):
-                    if str(row.get(excl_col)) == str(excl_val):
-                        # 🚫 No reemplazar, conservar valor del DD
-                        pass
+                if pd.notna(d_col) and pd.notna(s_col) and s_col in match:
+                    if pd.notna(excl_col) and pd.notna(excl_val):
+                        if str(row.get(excl_col)) == str(excl_val):
+                            # 🚫 No reemplazar
+                            pass
+                        else:
+                            row_dict[d_col] = match.get(s_col, row_dict[d_col])
                     else:
                         row_dict[d_col] = match.get(s_col, row_dict[d_col])
-                else:
-                    row_dict[d_col] = match.get(s_col, row_dict[d_col])
 
-        # Adjuntar TODAS las columnas del sample sin modificar las del DD
-        for col in sample.columns:
-            row_dict[col] = match.get(col, None)
+            # Adjuntar TODAS las columnas del sample sin modificar las del DD
+            for col in sample.columns:
+                row_dict[col] = match.get(col, None)
 
-        return row_dict
+            return row_dict
 
-    # Procesamiento
-    for _, row in dd.iterrows():
-        sample, sample_key = get_sample(row.get("mode"))
-        if sample.empty or sample_key is None:
-            unmatched_rows.append(row.to_dict())
-            continue
+        for _, row in dd.iterrows():
+            sample, sample_key = get_sample(row.get("mode"))
+            if sample.empty or sample_key is None:
+                unmatched_rows.append(row.to_dict())
+                continue
 
-        row_dict = apply_rules(row, sample, sample_key, match_rules, replace_rules)
-        if row_dict is None:
-            unmatched_rows.append(row.to_dict())
+            row_dict = apply_rules(row, sample, sample_key, match_rules, replace_rules)
+            if row_dict is None:
+                unmatched_rows.append(row.to_dict())
+            else:
+                final_rows.append(row_dict)
+
+        all_rows = final_rows + unmatched_rows
+
+        if all_rows:
+            final_table = pd.DataFrame(all_rows)
+            st.write("✅ Processed results:")
+            st.dataframe(final_table)
+
+            csv = final_table.to_csv(index=False).encode("utf-8")
+            st.download_button("Download CSV", csv, "final_table.csv", "text/csv")
         else:
-            final_rows.append(row_dict)
-
-    # Concatenar final con los no emparejados al final
-    all_rows = final_rows + unmatched_rows
-
-    if all_rows:
-        final_table = pd.DataFrame(all_rows)
-        st.write("✅ Processed results:")
-        st.dataframe(final_table)
-
-        # Descargar CSV
-        csv = final_table.to_csv(index=False).encode("utf-8")
-        st.download_button("Download CSV", csv, "final_table.csv", "text/csv")
-    else:
-        st.warning("⚠️ No rows were generated. Check your rules or mode.")
+            st.warning("⚠️ No rows were generated. Check your rules or mode.")
