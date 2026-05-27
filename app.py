@@ -57,9 +57,9 @@ if dd_file:
 
         def get_sample(mode):
             if mode == 1:
-                return phone, "phone"
+                return phone[phone["phonetypef"] == 1], "phone"
             elif mode == 2:
-                return phone, "phone"
+                return phone[phone["phonetypef"] == 2], "phone"
             elif mode == 3:
                 return online, "online"
             elif mode == 4:
