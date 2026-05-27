@@ -23,7 +23,10 @@ if dd_file:
         pd.DataFrame([{"DD Column (Match)": None, "Sample Column (Match)": None}]),
         column_config={
             "DD Column (Match)": st.column_config.SelectboxColumn("DD Column (Match)", options=list(dd.columns)),
-            "Sample Column (Match)": st.column_config.SelectboxColumn("Sample Column (Match)", options=list(set(phone.columns) | set(online.columns) | set(email.columns))),
+            "Sample Column (Match)": st.column_config.SelectboxColumn(
+                "Sample Column (Match)",
+                options=list(set(phone.columns) | set(online.columns) | set(email.columns))
+            ),
         },
         num_rows="dynamic",
         key="match_rules"
@@ -35,7 +38,10 @@ if dd_file:
         pd.DataFrame([{"DD Column (Replace)": None, "Sample Column (Replace)": None, "Exclusion Column": None, "Exclusion Value": None}]),
         column_config={
             "DD Column (Replace)": st.column_config.SelectboxColumn("DD Column (Replace)", options=list(dd.columns)),
-            "Sample Column (Replace)": st.column_config.SelectboxColumn("Sample Column (Replace)", options=list(set(phone.columns) | set(online.columns) | set(email.columns))),
+            "Sample Column (Replace)": st.column_config.SelectboxColumn(
+                "Sample Column (Replace)",
+                options=list(set(phone.columns) | set(online.columns) | set(email.columns))
+            ),
             "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(dd.columns)),
             "Exclusion Value": st.column_config.TextColumn("Exclusion Value"),
         },
@@ -89,8 +95,11 @@ if dd_file:
 
             if pd.notna(d_col) and pd.notna(s_col) and s_col in match:
                 # aplicar exclusión sobre el DDfile
-                if pd.notna(excl_col) and pd.notna(excl_val) and row.get(excl_col) == excl_val:
-                    continue
+                if pd.notna(excl_col) and pd.notna(excl_val):
+                    if row.get(excl_col) == excl_val:
+                        # 🚫 No reemplazar, dejar el valor original del DD
+                        continue
+                # ✅ Reemplazar si no hay exclusión
                 row_dict[d_col] = match.get(s_col, row_dict[d_col])
 
         # Adjuntar TODAS las columnas del sample sin modificarlas
