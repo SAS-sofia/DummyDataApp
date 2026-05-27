@@ -20,30 +20,39 @@ if dd_file:
 
     # Selección de columnas para Match
     dd_match_cols = st.multiselect("DDfile columns to match", dd.columns)
-    sample_match_cols = st.multiselect("Sample columns to match", 
-                                       list(phone.columns) + list(online.columns) + list(email.columns))
+    sample_match_cols = st.multiselect(
+        "Sample columns to match",
+        list(phone.columns) + list(online.columns) + list(email.columns)
+    )
 
     # Selección de columnas para Reemplazo
     dd_replace_cols = st.multiselect("DDfile columns to replace", dd.columns)
-    sample_replace_cols = st.multiselect("Sample columns to use for replacement", 
-                                         list(phone.columns) + list(online.columns) + list(email.columns))
+    sample_replace_cols = st.multiselect(
+        "Sample columns to use for replacement",
+        list(phone.columns) + list(online.columns) + list(email.columns)
+    )
 
     final_rows = []
 
     # Función para asignar sample según mode
     def assign_sample_row(dd_row):
-    mode = dd_row.get("mode")
-    if mode == 1:  # Landline
-        return phone[phone["phonetypef"] == 1]
-    elif mode == 2:  # Cellphone
-        return phone[phone["phonetypef"] == 2]
-    elif mode == 3:  # Text
-        return online
-    elif mode == 4:  # Email
-        return email
-    else:
-        return pd.DataFrame()
-
+        mode = dd_row.get("mode")
+        if mode == 1:  # Landline
+            if "phonetypef" in phone.columns:
+                return phone[phone["phonetypef"] == 1]
+            else:
+                return pd.DataFrame()
+        elif mode == 2:  # Cellphone
+            if "phonetypef" in phone.columns:
+                return phone[phone["phonetypef"] == 2]
+            else:
+                return pd.DataFrame()
+        elif mode == 3:  # Text
+            return online
+        elif mode == 4:  # Email
+            return email
+        else:
+            return pd.DataFrame()
 
     # Procesamiento
     for _, row in dd.iterrows():
@@ -57,19 +66,22 @@ if dd_file:
         if dd_match_cols and sample_match_cols:
             conditions = True
             for d_col, s_col in zip(dd_match_cols, sample_match_cols):
-                conditions &= (sample[s_col] == row[d_col])
+                if s_col in sample.columns:
+                    conditions &= (sample[s_col] == row[d_col])
             matches = sample[conditions]
             if not matches.empty:
                 match = matches.iloc[0].to_dict()
                 for d_col, s_col in zip(dd_replace_cols, sample_replace_cols):
-                    row_dict[d_col] = match.get(s_col, row_dict[d_col])
+                    if s_col in match:
+                        row_dict[d_col] = match.get(s_col, row_dict[d_col])
                 final_rows.append(row_dict)
                 continue
 
         # --- Fase 2: Reemplazo directo ---
         match = sample.sample(1).iloc[0].to_dict()
         for d_col, s_col in zip(dd_replace_cols, sample_replace_cols):
-            row_dict[d_col] = match.get(s_col, row_dict[d_col])
+            if s_col in match:
+                row_dict[d_col] = match.get(s_col, row_dict[d_col])
         final_rows.append(row_dict)
 
     if final_rows:
