@@ -19,21 +19,24 @@ if dd_file:
 
     # --- Phone rules ---
     st.markdown("### 📞 Phone Sample")
+    st.write("🔎 Match rules (para decidir coincidencias)")
     phone_match_rules = st.data_editor(
-        pd.DataFrame([{"DD Column": None, "Sample Column": None}]),
+        pd.DataFrame([{"DD Column (Match)": None, "Sample Column (Match)": None}]),
         column_config={
-            "DD Column": st.column_config.SelectboxColumn("DD Column", options=list(dd.columns)),
-            "Sample Column": st.column_config.SelectboxColumn("Sample Column", options=list(phone.columns)),
+            "DD Column (Match)": st.column_config.SelectboxColumn("DD Column (Match)", options=list(dd.columns)),
+            "Sample Column (Match)": st.column_config.SelectboxColumn("Sample Column (Match)", options=list(phone.columns)),
         },
         num_rows="dynamic",
         key="phone_match"
     )
+
+    st.write("✏️ Replace rules (para sobrescribir valores)")
     phone_replace_rules = st.data_editor(
-        pd.DataFrame([{"DD Column": None, "Sample Column": None, "Exclusion Column": None, "Exclusion Value": None}]),
+        pd.DataFrame([{"DD Column (Replace)": None, "Sample Column (Replace)": None, "Exclusion Column": None, "Exclusion Value": None}]),
         column_config={
-            "DD Column": st.column_config.SelectboxColumn("DD Column", options=list(dd.columns)),
-            "Sample Column": st.column_config.SelectboxColumn("Sample Column", options=list(phone.columns)),
-            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(phone.columns)),
+            "DD Column (Replace)": st.column_config.SelectboxColumn("DD Column (Replace)", options=list(dd.columns)),
+            "Sample Column (Replace)": st.column_config.SelectboxColumn("Sample Column (Replace)", options=list(phone.columns)),
+            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(dd.columns)),  # CORREGIDO: exclusión desde DD
             "Exclusion Value": st.column_config.TextColumn("Exclusion Value"),
         },
         num_rows="dynamic",
@@ -42,21 +45,24 @@ if dd_file:
 
     # --- Online rules ---
     st.markdown("### 💻 Online Sample")
+    st.write("🔎 Match rules (para decidir coincidencias)")
     online_match_rules = st.data_editor(
-        pd.DataFrame([{"DD Column": None, "Sample Column": None}]),
+        pd.DataFrame([{"DD Column (Match)": None, "Sample Column (Match)": None}]),
         column_config={
-            "DD Column": st.column_config.SelectboxColumn("DD Column", options=list(dd.columns)),
-            "Sample Column": st.column_config.SelectboxColumn("Sample Column", options=list(online.columns)),
+            "DD Column (Match)": st.column_config.SelectboxColumn("DD Column (Match)", options=list(dd.columns)),
+            "Sample Column (Match)": st.column_config.SelectboxColumn("Sample Column (Match)", options=list(online.columns)),
         },
         num_rows="dynamic",
         key="online_match"
     )
+
+    st.write("✏️ Replace rules (para sobrescribir valores)")
     online_replace_rules = st.data_editor(
-        pd.DataFrame([{"DD Column": None, "Sample Column": None, "Exclusion Column": None, "Exclusion Value": None}]),
+        pd.DataFrame([{"DD Column (Replace)": None, "Sample Column (Replace)": None, "Exclusion Column": None, "Exclusion Value": None}]),
         column_config={
-            "DD Column": st.column_config.SelectboxColumn("DD Column", options=list(dd.columns)),
-            "Sample Column": st.column_config.SelectboxColumn("Sample Column", options=list(online.columns)),
-            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(online.columns)),
+            "DD Column (Replace)": st.column_config.SelectboxColumn("DD Column (Replace)", options=list(dd.columns)),
+            "Sample Column (Replace)": st.column_config.SelectboxColumn("Sample Column (Replace)", options=list(online.columns)),
+            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(dd.columns)),  # CORREGIDO
             "Exclusion Value": st.column_config.TextColumn("Exclusion Value"),
         },
         num_rows="dynamic",
@@ -65,21 +71,24 @@ if dd_file:
 
     # --- Email rules ---
     st.markdown("### 📧 Email Sample")
+    st.write("🔎 Match rules (para decidir coincidencias)")
     email_match_rules = st.data_editor(
-        pd.DataFrame([{"DD Column": None, "Sample Column": None}]),
+        pd.DataFrame([{"DD Column (Match)": None, "Sample Column (Match)": None}]),
         column_config={
-            "DD Column": st.column_config.SelectboxColumn("DD Column", options=list(dd.columns)),
-            "Sample Column": st.column_config.SelectboxColumn("Sample Column", options=list(email.columns)),
+            "DD Column (Match)": st.column_config.SelectboxColumn("DD Column (Match)", options=list(dd.columns)),
+            "Sample Column (Match)": st.column_config.SelectboxColumn("Sample Column (Match)", options=list(email.columns)),
         },
         num_rows="dynamic",
         key="email_match"
     )
+
+    st.write("✏️ Replace rules (para sobrescribir valores)")
     email_replace_rules = st.data_editor(
-        pd.DataFrame([{"DD Column": None, "Sample Column": None, "Exclusion Column": None, "Exclusion Value": None}]),
+        pd.DataFrame([{"DD Column (Replace)": None, "Sample Column (Replace)": None, "Exclusion Column": None, "Exclusion Value": None}]),
         column_config={
-            "DD Column": st.column_config.SelectboxColumn("DD Column", options=list(dd.columns)),
-            "Sample Column": st.column_config.SelectboxColumn("Sample Column", options=list(email.columns)),
-            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(email.columns)),
+            "DD Column (Replace)": st.column_config.SelectboxColumn("DD Column (Replace)", options=list(dd.columns)),
+            "Sample Column (Replace)": st.column_config.SelectboxColumn("Sample Column (Replace)", options=list(email.columns)),
+            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(dd.columns)),  # CORREGIDO
             "Exclusion Value": st.column_config.TextColumn("Exclusion Value"),
         },
         num_rows="dynamic",
@@ -108,12 +117,12 @@ if dd_file:
 
         # --- Match ---
         if not sample.empty and not match_rules.empty:
-            conditions = pd.Series([True] * len(sample))
+            conditions = pd.Series(True, index=sample.index)  # CORREGIDO: index alineado
             for _, rule in match_rules.iterrows():
-                d_col = rule["DD Column"]
-                s_col = rule["Sample Column"]
+                d_col = rule["DD Column (Match)"]
+                s_col = rule["Sample Column (Match)"]
                 if pd.notna(d_col) and pd.notna(s_col) and s_col in sample.columns:
-                    conditions &= (sample[s_col] == row[d_col])
+                    conditions &= (sample[s_col].reindex(sample.index) == row[d_col])
             matches = sample[conditions]
             if matches.empty:
                 return row_dict  # no match → fila sin sample adjunto
@@ -125,19 +134,19 @@ if dd_file:
 
         # --- Reemplazo ---
         for _, rule in replace_rules.iterrows():
-            d_col = rule["DD Column"]
-            s_col = rule["Sample Column"]
+            d_col = rule["DD Column (Replace)"]
+            s_col = rule["Sample Column (Replace)"]
             excl_col = rule["Exclusion Column"]
             excl_val = rule["Exclusion Value"]
 
             if pd.notna(d_col) and pd.notna(s_col) and s_col in match:
-                # aplicar exclusión
-                if pd.notna(excl_col) and pd.notna(excl_val) and match.get(excl_col) == excl_val:
+                # aplicar exclusión sobre el DDfile
+                if pd.notna(excl_col) and pd.notna(excl_val) and row.get(excl_col) == excl_val:
                     continue
                 row_dict[d_col] = match.get(s_col, row_dict[d_col])
 
         # Adjuntar solo las columnas usadas del sample
-        used_cols = [c for c in list(match_rules["Sample Column"].dropna()) + list(replace_rules["Sample Column"].dropna())]
+        used_cols = [c for c in list(match_rules["Sample Column (Match)"].dropna()) + list(replace_rules["Sample Column (Replace)"].dropna())]
         for col in used_cols:
             if col in match:
                 row_dict[col] = match[col]
