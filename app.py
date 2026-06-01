@@ -20,13 +20,20 @@ if dd_file:
     # --- Match rules ---
     st.write("🔎 Match rules (para decidir coincidencias)")
     match_rules = st.data_editor(
-        pd.DataFrame([{"DD Column (Match)": None, "Sample Column (Match)": None}]),
+        pd.DataFrame([{
+            "DD Column (Match)": None,
+            "Sample Column (Match)": None,
+            "Exclusion Column": None,
+            "Exclusion Value": None
+        }]),
         column_config={
             "DD Column (Match)": st.column_config.SelectboxColumn("DD Column (Match)", options=list(dd.columns)),
             "Sample Column (Match)": st.column_config.SelectboxColumn(
                 "Sample Column (Match)",
                 options=list(set(phone.columns) | set(online.columns) | set(email.columns))
             ),
+            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(dd.columns)),
+            "Exclusion Value": st.column_config.TextColumn("Exclusion Value"),
         },
         num_rows="dynamic",
         key="match_rules"
@@ -35,7 +42,12 @@ if dd_file:
     # --- Replace rules ---
     st.write("✏️ Replace rules (para sobrescribir valores)")
     replace_rules = st.data_editor(
-        pd.DataFrame([{"DD Column (Replace)": None, "Sample Column (Replace)": None, "Exclusion Column": None, "Exclusion Value": None}]),
+        pd.DataFrame([{
+            "DD Column (Replace)": None,
+            "Sample Column (Replace)": None,
+            "Exclusion Column": None,
+            "Exclusion Value": None
+        }]),
         column_config={
             "DD Column (Replace)": st.column_config.SelectboxColumn("DD Column (Replace)", options=list(dd.columns)),
             "Sample Column (Replace)": st.column_config.SelectboxColumn(
@@ -71,14 +83,23 @@ if dd_file:
             row_dict = row.to_dict()
             match = None
 
-            # --- Match ---
+            # --- Match con exclusiones ---
             if not sample.empty and not match_rules.empty:
                 conditions = pd.Series(True, index=sample.index)
                 for _, rule in match_rules.iterrows():
                     d_col = rule["DD Column (Match)"]
                     s_col = rule["Sample Column (Match)"]
+                    excl_col = rule["Exclusion Column"]
+                    excl_val = rule["Exclusion Value"]
+
+                    # Exclusión en match → fila se deja en blanco
+                    if pd.notna(excl_col) and pd.notna(excl_val):
+                        if str(row.get(excl_col)) == str(excl_val):
+                            return None
+
                     if pd.notna(d_col) and pd.notna(s_col) and s_col in sample.columns:
                         conditions &= (sample[s_col] == row[d_col])
+
                 matches = sample.loc[conditions]
                 matches = matches.loc[~matches.index.isin(used_indices[sample_key])]
                 if not matches.empty:
@@ -91,7 +112,7 @@ if dd_file:
             if match is None:
                 return None
 
-            # --- Reemplazo ---
+            # --- Replace ---
             for _, rule in replace_rules.iterrows():
                 d_col = rule["DD Column (Replace)"]
                 s_col = rule["Sample Column (Replace)"]
@@ -101,19 +122,19 @@ if dd_file:
                 if pd.notna(d_col) and pd.notna(s_col) and s_col in match:
                     if pd.notna(excl_col) and pd.notna(excl_val):
                         if str(row.get(excl_col)) == str(excl_val):
-                            # 🚫 No reemplazar
-                            pass
+                            pass  # 🚫 no reemplazar
                         else:
                             row_dict[d_col] = match.get(s_col, row_dict[d_col])
                     else:
                         row_dict[d_col] = match.get(s_col, row_dict[d_col])
 
-            # Adjuntar TODAS las columnas del sample sin modificar las del DD
+            # Adjuntar todas las columnas del sample
             for col in sample.columns:
                 row_dict[col] = match.get(col, None)
 
             return row_dict
 
+        # Procesamiento
         for _, row in dd.iterrows():
             sample, sample_key = get_sample(row.get("mode"))
             if sample.empty or sample_key is None:
