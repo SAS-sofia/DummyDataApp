@@ -3,18 +3,40 @@ import pandas as pd
 
 st.title("Survey Results & Sample Matcher 📊")
 
-# Subir archivos
-dd_file = st.file_uploader("Upload DDfile (CSV)", type="csv")
-phone_file = st.file_uploader("Upload Phone Sample (CSV)", type="csv")
-online_file = st.file_uploader("Upload Online Sample (CSV)", type="csv")
-email_file = st.file_uploader("Upload Email Sample (CSV)", type="csv")
+# Función para leer CSV desde Google Drive
+def read_drive_csv(link):
+    try:
+        if link:
+            file_id = link.split("/d/")[1].split("/")[0]
+            url = f"https://drive.google.com/uc?id={file_id}"
+            return pd.read_csv(url)
+    except Exception as e:
+        st.error(f"Error leyendo archivo desde Drive: {e}")
+    return pd.DataFrame()
 
-if dd_file:
-    dd = pd.read_csv(dd_file)
-    phone = pd.read_csv(phone_file) if phone_file else pd.DataFrame()
-    online = pd.read_csv(online_file) if online_file else pd.DataFrame()
-    email = pd.read_csv(email_file) if email_file else pd.DataFrame()
+# --- Inputs para DDfile ---
+st.subheader("📂 Cargar DDfile")
+dd_file = st.file_uploader("Sube DDfile (CSV)", type="csv")
+dd_link = st.text_input("O pega el link de Google Drive para DDfile")
 
+# --- Inputs para Samples ---
+st.subheader("📂 Cargar Samples")
+phone_file = st.file_uploader("Sube Phone Sample (CSV)", type="csv")
+phone_link = st.text_input("O pega el link de Google Drive para Phone Sample")
+
+online_file = st.file_uploader("Sube Online Sample (CSV)", type="csv")
+online_link = st.text_input("O pega el link de Google Drive para Online Sample")
+
+email_file = st.file_uploader("Sube Email Sample (CSV)", type="csv")
+email_link = st.text_input("O pega el link de Google Drive para Email Sample")
+
+# --- Lectura de archivos ---
+dd = pd.read_csv(dd_file) if dd_file else read_drive_csv(dd_link)
+phone = pd.read_csv(phone_file) if phone_file else read_drive_csv(phone_link)
+online = pd.read_csv(online_file) if online_file else read_drive_csv(online_link)
+email = pd.read_csv(email_file) if email_file else read_drive_csv(email_link)
+
+if not dd.empty:
     st.subheader("⚙️ Define global rules (aplican a todos los samples)")
 
     # --- Match rules ---
@@ -92,7 +114,6 @@ if dd_file:
                     excl_col = rule["Exclusion Column"]
                     excl_val = rule["Exclusion Value"]
 
-                    # Exclusión en match → fila se deja en blanco
                     if pd.notna(excl_col) and pd.notna(excl_val):
                         if str(row.get(excl_col)) == str(excl_val):
                             return None
@@ -122,7 +143,7 @@ if dd_file:
                 if pd.notna(d_col) and pd.notna(s_col) and s_col in match:
                     if pd.notna(excl_col) and pd.notna(excl_val):
                         if str(row.get(excl_col)) == str(excl_val):
-                            pass  # 🚫 no reemplazar
+                            pass
                         else:
                             row_dict[d_col] = match.get(s_col, row_dict[d_col])
                     else:
@@ -134,7 +155,6 @@ if dd_file:
 
             return row_dict
 
-        # Procesamiento
         for _, row in dd.iterrows():
             sample, sample_key = get_sample(row.get("mode"))
             if sample.empty or sample_key is None:
