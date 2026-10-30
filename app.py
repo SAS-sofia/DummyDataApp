@@ -462,16 +462,16 @@ with tab_prepare:
                 "✅ Mode Validation"
             )
 
-            st.dataframe(
-
-            if recommended_keep:
-    
-                st.info(
-                    "Suggested Review Before Removing:\n\n"
-                    + "\n".join(
-                        recommended_keep
-                    )
-                )
+            validation_df = (
+                prep[validation_cols]
+                .drop_duplicates()
+            )
+            
+            st.subheader("✅ Mode Mapping")
+            
+            st.table(
+                validation_df
+            )
 
         st.info(
             """
