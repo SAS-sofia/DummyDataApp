@@ -92,7 +92,36 @@ def create_mode(df):
 
     return df
 
+def move_mode_next_to_pmode(df):
 
+    if "mode" not in df.columns:
+        return df
+
+    pmode_col = None
+
+    for col in df.columns:
+
+        if col.lower() == "pmode":
+
+            pmode_col = col
+            break
+
+    if pmode_col is None:
+        return df
+
+    cols = list(df.columns)
+
+    cols.remove("mode")
+
+    pos = cols.index(pmode_col) + 1
+
+    cols.insert(
+        pos,
+        "mode"
+    )
+
+    return df[cols]
+    
 def clean_submitdate(df):
 
     if "submitdate" in df.columns:
@@ -287,6 +316,8 @@ with tab_prepare:
         prep = dd.copy()
 
         prep = create_mode(prep)
+
+        prep = move_mode_next_to_pmode(prep)
 
         prep = clean_submitdate(prep)
 
