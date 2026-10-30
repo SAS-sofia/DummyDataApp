@@ -370,7 +370,6 @@ with tab_prepare:
             "interviewtime",
             "RefusedSplit",
             "pSetter",
-
             "pMode",
             "pPhoneType",
             "pPhonetype"
