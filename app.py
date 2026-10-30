@@ -370,6 +370,7 @@ with tab_prepare:
             "interviewtime",
             "RefusedSplit",
             "pSetter",
+
             "pMode",
             "pPhoneType",
             "pPhonetype"
@@ -399,28 +400,16 @@ with tab_prepare:
 
         ]
 
-        review_first = [
+        default_remove = list(
 
-            "pMode",
-            "pPhoneType",
-            "pPhonetype"
+            set(
 
-        ]
+                existing_technical
+                + empty_cols
 
-        default_remove = [
-
-            c
-
-            for c in list(
-                set(
-                    existing_technical
-                    + empty_cols
-                )
             )
 
-            if c not in review_first
-
-        ]
+        )
 
         recommended_keep = [
 
@@ -478,40 +467,43 @@ Review pMode / pPhoneType against mode first.
 Once validated, add them to the removal list.
 """
         )
-
         if "preview_dd" not in st.session_state:
 
             st.session_state[
                 "preview_dd"
             ] = prep.copy()
 
-            priority_cols = [
-            
-                "pMode",
-                "pPhoneType",
-                "pPhonetype"
-            
-            ]
-            
-            ordered_options = [
-            
-                c
-                for c in priority_cols
-                if c in prep.columns
-            
-            ] + [
-            
-                c
-                for c in prep.columns
-                if c not in priority_cols
-            
-            ]
-            
-            columns_to_remove = st.multiselect(
-            
-                "Columns To Remove",
-            
-                options=ordered_options,
+        priority_cols = [
+
+            "pMode",
+            "pPhoneType",
+            "pPhonetype"
+
+        ]
+
+        ordered_options = [
+
+            c
+
+            for c in priority_cols
+
+            if c in prep.columns
+
+        ] + [
+
+            c
+
+            for c in prep.columns
+
+            if c not in priority_cols
+
+        ]
+
+        columns_to_remove = st.multiselect(
+
+            "Columns To Remove",
+
+            options=ordered_options,
 
             default=[
 
@@ -529,6 +521,20 @@ Once validated, add them to the removal list.
             key="columns_to_remove"
 
         )
+
+        preview_df = prep.drop(
+
+            columns=columns_to_remove,
+
+            errors="ignore"
+
+        )
+
+        st.session_state[
+            "preview_dd"
+        ] = preview_df
+
+        
 
         preview_df = prep.drop(
 
