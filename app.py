@@ -463,20 +463,15 @@ with tab_prepare:
             )
 
             st.dataframe(
-                prep[
-                    validation_cols
-                ].head(20),
-                use_container_width=True
-            )
 
-        if recommended_keep:
-
-            st.info(
-                "Suggested Review Before Removing:\n\n"
-                + "\n".join(
-                    recommended_keep
+            if recommended_keep:
+    
+                st.info(
+                    "Suggested Review Before Removing:\n\n"
+                    + "\n".join(
+                        recommended_keep
+                    )
                 )
-            )
 
         st.info(
             """
