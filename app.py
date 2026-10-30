@@ -1,180 +1,466 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import re
 
-st.title("Survey Results & Sample Matcher 📊")
+st.set_page_config(
+    page_title="Survey DD Builder",
+    layout="wide"
+)
 
-# Función para leer CSV desde Google Drive
+st.title("Survey DD Builder 📊")
+
+# =====================================================
+# HELPERS
+# =====================================================
+
 def read_drive_csv(link):
+
     try:
+
         if link:
-            file_id = link.split("/d/")[1].split("/")[0]
-            url = f"https://drive.google.com/uc?id={file_id}"
+
+            file_id = (
+                link
+                .split("/d/")[1]
+                .split("/")[0]
+            )
+
+            url = (
+                f"https://drive.google.com/uc?id={file_id}"
+            )
+
             return pd.read_csv(url)
+
     except Exception as e:
-        st.error(f"Error leyendo archivo desde Drive: {e}")
+
+        st.error(
+            f"Error leyendo archivo desde Drive: {e}"
+        )
+
     return pd.DataFrame()
 
-# --- Inputs para DDfile ---
-st.subheader("📂 Cargar DDfile")
-dd_file = st.file_uploader("Sube DDfile (CSV)", type="csv")
-dd_link = st.text_input("O pega el link de Google Drive para DDfile")
 
-# --- Inputs para Samples ---
-st.subheader("📂 Cargar Samples")
-phone_file = st.file_uploader("Sube Phone Sample (CSV)", type="csv")
-phone_link = st.text_input("O pega el link de Google Drive para Phone Sample")
+def create_mode(df):
 
-online_file = st.file_uploader("Sube Online Sample (CSV)", type="csv")
-online_link = st.text_input("O pega el link de Google Drive para Online Sample")
+    pmode_col = None
+    phonetype_col = None
 
-email_file = st.file_uploader("Sube Email Sample (CSV)", type="csv")
-email_link = st.text_input("O pega el link de Google Drive para Email Sample")
+    for col in df.columns:
 
-# --- Lectura de archivos ---
-dd = pd.read_csv(dd_file) if dd_file else read_drive_csv(dd_link)
-phone = pd.read_csv(phone_file) if phone_file else read_drive_csv(phone_link)
-online = pd.read_csv(online_file) if online_file else read_drive_csv(online_link)
-email = pd.read_csv(email_file) if email_file else read_drive_csv(email_link)
+        if col.lower() == "pmode":
+            pmode_col = col
 
-if not dd.empty:
-    st.subheader("⚙️ Define global rules (aplican a todos los samples)")
+        if col.lower() == "pphonetype":
+            phonetype_col = col
 
-    # --- Match rules ---
-    st.write("🔎 Match rules (para decidir coincidencias)")
-    match_rules = st.data_editor(
-        pd.DataFrame([{
-            "DD Column (Match)": None,
-            "Sample Column (Match)": None,
-            "Exclusion Column": None,
-            "Exclusion Value": None
-        }]),
-        column_config={
-            "DD Column (Match)": st.column_config.SelectboxColumn("DD Column (Match)", options=list(dd.columns)),
-            "Sample Column (Match)": st.column_config.SelectboxColumn(
-                "Sample Column (Match)",
-                options=list(set(phone.columns) | set(online.columns) | set(email.columns))
-            ),
-            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(dd.columns)),
-            "Exclusion Value": st.column_config.TextColumn("Exclusion Value"),
-        },
-        num_rows="dynamic",
-        key="match_rules"
+    if pmode_col is None:
+        return df
+
+    def calc_mode(row):
+
+        try:
+            pmode = int(row[pmode_col])
+        except:
+            return None
+
+        try:
+            pphone = int(
+                row[phonetype_col]
+            )
+        except:
+            pphone = None
+
+        if pmode == 1 and pphone == 1:
+            return 1
+
+        if pmode == 1 and pphone == 2:
+            return 2
+
+        if pmode == 3:
+            return 3
+
+        if pmode == 2:
+            return 4
+
+        return None
+
+    df["mode"] = df.apply(
+        calc_mode,
+        axis=1
     )
 
-    # --- Replace rules ---
-    st.write("✏️ Replace rules (para sobrescribir valores)")
-    replace_rules = st.data_editor(
-        pd.DataFrame([{
-            "DD Column (Replace)": None,
-            "Sample Column (Replace)": None,
-            "Exclusion Column": None,
-            "Exclusion Value": None
-        }]),
-        column_config={
-            "DD Column (Replace)": st.column_config.SelectboxColumn("DD Column (Replace)", options=list(dd.columns)),
-            "Sample Column (Replace)": st.column_config.SelectboxColumn(
-                "Sample Column (Replace)",
-                options=list(set(phone.columns) | set(online.columns) | set(email.columns))
-            ),
-            "Exclusion Column": st.column_config.SelectboxColumn("Exclusion Column", options=list(dd.columns)),
-            "Exclusion Value": st.column_config.TextColumn("Exclusion Value"),
-        },
-        num_rows="dynamic",
-        key="replace_rules"
+    return df
+
+
+def clean_submitdate(df):
+
+    if "submitdate" in df.columns:
+
+        df["submitdate"] = (
+            pd.to_datetime(
+                df["submitdate"],
+                errors="coerce"
+            )
+            .dt.strftime("%Y-%m-%d")
+        )
+
+    return df
+
+
+def replace_run_at(df):
+
+    obj_cols = df.select_dtypes(
+        include=["object"]
+    ).columns
+
+    for col in obj_cols:
+
+        df[col] = df[col].replace(
+            r"Run at.*",
+            "Test",
+            regex=True
+        )
+
+    return df
+
+
+def rename_arrays(df):
+
+    rename_map = {}
+
+    for col in df.columns:
+
+        match = re.match(
+            r"Q\d+to\d+_(\d+)",
+            col
+        )
+
+        if match:
+
+            rename_map[col] = (
+                f"Q{match.group(1)}"
+            )
+
+    return df.rename(
+        columns=rename_map
     )
 
-    # Botón para ejecutar procesamiento
-    if st.button("🚀 Aplicar reglas y generar tabla final"):
-        final_rows = []
-        unmatched_rows = []
-        used_indices = {"phone": set(), "online": set(), "email": set()}
 
-        def get_sample(mode):
-            if mode == 1:
-                return phone[phone["phonetypef"] == 1], "phone"
-            elif mode == 2:
-                return phone[phone["phonetypef"] == 2], "phone"
-            elif mode == 3:
-                return online, "online"
-            elif mode == 4:
-                return email, "email"
-            else:
-                return pd.DataFrame(), None
+def clean_headers(df):
 
-        def apply_rules(row, sample, sample_key, match_rules, replace_rules):
-            row_dict = row.to_dict()
-            match = None
+    df.columns = [
 
-            # --- Match con exclusiones ---
-            if not sample.empty and not match_rules.empty:
-                conditions = pd.Series(True, index=sample.index)
-                for _, rule in match_rules.iterrows():
-                    d_col = rule["DD Column (Match)"]
-                    s_col = rule["Sample Column (Match)"]
-                    excl_col = rule["Exclusion Column"]
-                    excl_val = rule["Exclusion Value"]
+        c.replace(
+            "[",
+            "_"
+        ).replace(
+            "]",
+            ""
 
-                    if pd.notna(excl_col) and pd.notna(excl_val):
-                        if str(row.get(excl_col)) == str(excl_val):
-                            return None
+        )
 
-                    if pd.notna(d_col) and pd.notna(s_col) and s_col in sample.columns:
-                        conditions &= (sample[s_col] == row[d_col])
+        for c in df.columns
 
-                matches = sample.loc[conditions]
-                matches = matches.loc[~matches.index.isin(used_indices[sample_key])]
-                if not matches.empty:
-                    match_index = matches.index[0]
-                    used_indices[sample_key].add(match_index)
-                    match = matches.iloc[0].to_dict()
-            else:
-                return None
+    ]
 
-            if match is None:
-                return None
+    return df
 
-            # --- Replace ---
-            for _, rule in replace_rules.iterrows():
-                d_col = rule["DD Column (Replace)"]
-                s_col = rule["Sample Column (Replace)"]
-                excl_col = rule["Exclusion Column"]
-                excl_val = rule["Exclusion Value"]
 
-                if pd.notna(d_col) and pd.notna(s_col) and s_col in match:
-                    if pd.notna(excl_col) and pd.notna(excl_val):
-                        if str(row.get(excl_col)) == str(excl_val):
-                            pass
-                        else:
-                            row_dict[d_col] = match.get(s_col, row_dict[d_col])
-                    else:
-                        row_dict[d_col] = match.get(s_col, row_dict[d_col])
+def create_rotation(n):
 
-            # Adjuntar todas las columnas del sample
-            for col in sample.columns:
-                row_dict[col] = match.get(col, None)
+    values = [1, 2] * ((n // 2) + 1)
 
-            return row_dict
+    values = values[:n]
 
-        for _, row in dd.iterrows():
-            sample, sample_key = get_sample(row.get("mode"))
-            if sample.empty or sample_key is None:
-                unmatched_rows.append(row.to_dict())
-                continue
+    np.random.shuffle(values)
 
-            row_dict = apply_rules(row, sample, sample_key, match_rules, replace_rules)
-            if row_dict is None:
-                unmatched_rows.append(row.to_dict())
-            else:
-                final_rows.append(row_dict)
+    return values
 
-        all_rows = final_rows + unmatched_rows
 
-        if all_rows:
-            final_table = pd.DataFrame(all_rows)
-            st.write("✅ Processed results:")
-            st.dataframe(final_table)
+def find_empty_columns(df):
 
-            csv = final_table.to_csv(index=False).encode("utf-8")
-            st.download_button("Download CSV", csv, "final_table.csv", "text/csv")
-        else:
-            st.warning("⚠️ No rows were generated. Check your rules or mode.")
+    empty = []
+
+    for col in df.columns:
+
+        values = (
+            df[col]
+            .replace("", pd.NA)
+            .dropna()
+        )
+
+        if len(values) == 0:
+
+            empty.append(col)
+
+    return empty
+
+
+def show_expected_samples(df):
+
+    if "mode" not in df.columns:
+        return
+
+    modes = sorted(
+        df["mode"]
+        .dropna()
+        .unique()
+        .tolist()
+    )
+
+    st.subheader(
+        "📋 Expected Samples"
+    )
+
+    if 1 in modes or 2 in modes:
+
+        st.success(
+            "Phone Sample Required"
+        )
+
+    if 3 in modes:
+
+        st.success(
+            "Online Sample Required"
+        )
+
+    if 4 in modes:
+
+        st.success(
+            "Email Sample Required"
+        )
+
+
+# =====================================================
+# TABS
+# =====================================================
+
+tab_prepare, tab_match = st.tabs(
+    [
+        "Prepare DD",
+        "Matching"
+    ]
+)
+
+# =====================================================
+# PREPARE DD
+# =====================================================
+
+with tab_prepare:
+
+    st.header(
+        "Prepare DD"
+    )
+
+    dd_file = st.file_uploader(
+        "Raw Survey CSV",
+        type="csv",
+        key="rawdd"
+    )
+
+    dd_link = st.text_input(
+        "Google Drive Link",
+        key="rawlink"
+    )
+
+    dd = (
+        pd.read_csv(dd_file)
+        if dd_file
+        else read_drive_csv(dd_link)
+    )
+
+    add_rotation = st.checkbox(
+        "Add TrackRotation"
+    )
+
+    rotation_name = st.text_input(
+        "Rotation Column Name",
+        value="TrackRotation"
+    )
+
+    if (
+        st.button("Prepare DD")
+        and not dd.empty
+    ):
+
+        prep = dd.copy()
+
+        prep = create_mode(prep)
+
+        prep = clean_submitdate(prep)
+
+        prep = replace_run_at(prep)
+
+        prep = rename_arrays(prep)
+
+        prep = clean_headers(prep)
+
+        show_expected_samples(
+            prep
+        )
+
+        if add_rotation:
+
+            prep[
+                rotation_name
+            ] = create_rotation(
+                len(prep)
+            )
+
+        empty_cols = (
+            find_empty_columns(prep)
+        )
+
+        st.session_state[
+            "empty_cols"
+        ] = empty_cols
+
+        st.session_state[
+            "prepared_dd"
+        ] = prep
+
+    if "prepared_dd" in st.session_state:
+
+        prep = st.session_state[
+            "prepared_dd"
+        ]
+
+        st.subheader(
+            "Empty Columns"
+        )
+
+        empty_cols = (
+            st.session_state.get(
+                "empty_cols",
+                []
+            )
+        )
+
+        keep_cols = st.multiselect(
+            "Select Empty Columns To KEEP",
+            options=empty_cols,
+            default=[
+                x
+                for x in empty_cols
+                if (
+                    x.startswith("Q")
+                    or x.startswith("D")
+                    or "other"
+                    in x.lower()
+                )
+            ]
+        )
+
+        drop_cols = [
+
+            x
+
+            for x in empty_cols
+
+            if x not in keep_cols
+
+        ]
+
+        preview_df = prep.drop(
+            columns=drop_cols,
+            errors="ignore"
+        )
+
+        st.subheader(
+            "Preview"
+        )
+
+        st.dataframe(
+            preview_df,
+            use_container_width=True
+        )
+
+        st.session_state[
+            "prepared_dd"
+        ] = preview_df
+
+        csv = (
+            preview_df
+            .to_csv(index=False)
+            .encode("utf-8")
+        )
+
+        st.download_button(
+            "Download Clean DD",
+            csv,
+            "clean_dd.csv",
+            "text/csv"
+        )
+
+# =====================================================
+# MATCHING
+# =====================================================
+
+with tab_match:
+
+    st.header(
+        "Matching"
+    )
+
+    if (
+        "prepared_dd"
+        not in st.session_state
+    ):
+
+        st.info(
+            "Prepare DD first."
+        )
+
+    else:
+
+        prepared_dd = (
+            st.session_state[
+                "prepared_dd"
+            ]
+        )
+
+        st.success(
+            f"{len(prepared_dd)} rows loaded from Prepare DD"
+        )
+
+        phone_file = st.file_uploader(
+            "Phone Sample",
+            type="csv"
+        )
+
+        online_file = st.file_uploader(
+            "Online Sample",
+            type="csv"
+        )
+
+        email_file = st.file_uploader(
+            "Email Sample",
+            type="csv"
+        )
+
+        phone = (
+            pd.read_csv(phone_file)
+            if phone_file
+            else pd.DataFrame()
+        )
+
+        online = (
+            pd.read_csv(online_file)
+            if online_file
+            else pd.DataFrame()
+        )
+
+        email = (
+            pd.read_csv(email_file)
+            if email_file
+            else pd.DataFrame()
+        )
+
+        st.info(
+            "Matching V1 pendiente de integrar completamente."
+        )
+
+        st.write(
+            "La preparación del DD ya está funcional."
+        )
