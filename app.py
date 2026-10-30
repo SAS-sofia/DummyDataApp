@@ -514,7 +514,7 @@ Once validated, add them to the removal list.
 
         )
 
-                preview_df = prep.drop(
+        preview_df = prep.drop(
 
             columns=columns_to_remove,
 
