@@ -486,11 +486,33 @@ Once validated, add them to the removal list.
                 "preview_dd"
             ] = prep.copy()
 
-        columns_to_remove = st.multiselect(
-
-            "Columns To Remove",
-
-            options=list(prep.columns),
+            priority_cols = [
+            
+                "pMode",
+                "pPhoneType",
+                "pPhonetype"
+            
+            ]
+            
+            ordered_options = [
+            
+                c
+                for c in priority_cols
+                if c in prep.columns
+            
+            ] + [
+            
+                c
+                for c in prep.columns
+                if c not in priority_cols
+            
+            ]
+            
+            columns_to_remove = st.multiselect(
+            
+                "Columns To Remove",
+            
+                options=ordered_options,
 
             default=[
 
