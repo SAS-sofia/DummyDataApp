@@ -14,33 +14,6 @@ st.title("Survey DD Builder 📊")
 # HELPERS
 # =====================================================
 
-def read_drive_csv(link):
-
-    try:
-
-        if link:
-
-            file_id = (
-                link
-                .split("/d/")[1]
-                .split("/")[0]
-            )
-
-            url = (
-                f"https://drive.google.com/uc?id={file_id}"
-            )
-
-            return pd.read_csv(url)
-
-    except Exception as e:
-
-        st.error(
-            f"Error leyendo archivo desde Drive: {e}"
-        )
-
-    return pd.DataFrame()
-
-
 def create_mode(df):
 
     pmode_col = None
@@ -72,16 +45,16 @@ def create_mode(df):
             pphone = None
 
         if pmode == 1 and pphone == 1:
-            return 1
+            return 1  # Landline
 
         if pmode == 1 and pphone == 2:
-            return 2
+            return 2  # Cell
 
         if pmode == 3:
-            return 3
+            return 3  # Text
 
         if pmode == 2:
-            return 4
+            return 4  # Email
 
         return None
 
@@ -91,6 +64,7 @@ def create_mode(df):
     )
 
     return df
+
 
 def move_mode_next_to_pmode(df):
 
@@ -121,7 +95,8 @@ def move_mode_next_to_pmode(df):
     )
 
     return df[cols]
-    
+
+
 def clean_submitdate(df):
 
     if "submitdate" in df.columns:
@@ -186,7 +161,6 @@ def clean_headers(df):
         ).replace(
             "]",
             ""
-
         )
 
         for c in df.columns
@@ -205,6 +179,31 @@ def create_rotation(n):
     np.random.shuffle(values)
 
     return values
+
+
+def move_rotation_next_to_mode(
+    df,
+    rotation_name
+):
+
+    if (
+        rotation_name not in df.columns
+        or "mode" not in df.columns
+    ):
+        return df
+
+    cols = list(df.columns)
+
+    cols.remove(rotation_name)
+
+    pos = cols.index("mode") + 1
+
+    cols.insert(
+        pos,
+        rotation_name
+    )
+
+    return df[cols]
 
 
 def find_empty_columns(df):
@@ -288,17 +287,6 @@ with tab_prepare:
         key="rawdd"
     )
 
-    dd_link = st.text_input(
-        "Google Drive Link",
-        key="rawlink"
-    )
-
-    dd = (
-        pd.read_csv(dd_file)
-        if dd_file
-        else read_drive_csv(dd_link)
-    )
-
     add_rotation = st.checkbox(
         "Add TrackRotation"
     )
@@ -310,8 +298,10 @@ with tab_prepare:
 
     if (
         st.button("Prepare DD")
-        and not dd.empty
+        and dd_file is not None
     ):
+
+        dd = pd.read_csv(dd_file)
 
         prep = dd.copy()
 
@@ -327,10 +317,6 @@ with tab_prepare:
 
         prep = clean_headers(prep)
 
-        show_expected_samples(
-            prep
-        )
-
         if add_rotation:
 
             prep[
@@ -338,6 +324,15 @@ with tab_prepare:
             ] = create_rotation(
                 len(prep)
             )
+
+            prep = move_rotation_next_to_mode(
+                prep,
+                rotation_name
+            )
+
+        show_expected_samples(
+            prep
+        )
 
         empty_cols = (
             find_empty_columns(prep)
@@ -357,45 +352,90 @@ with tab_prepare:
             "prepared_dd"
         ]
 
+        # =====================================
+        # COLUMN CLEANUP
+        # =====================================
+
         st.subheader(
-            "Empty Columns"
+            "🧹 Column Cleanup"
         )
 
-        empty_cols = (
-            st.session_state.get(
-                "empty_cols",
-                []
-            )
-        )
+        technical_columns = [
 
-        keep_cols = st.multiselect(
-            "Select Empty Columns To KEEP",
-            options=empty_cols,
-            default=[
-                x
-                for x in empty_cols
-                if (
-                    x.startswith("Q")
-                    or x.startswith("D")
-                    or "other"
-                    in x.lower()
-                )
-            ]
-        )
-
-        drop_cols = [
-
-            x
-
-            for x in empty_cols
-
-            if x not in keep_cols
+            "lastpage",
+            "startlanguage",
+            "startdate",
+            "datestamp",
+            "ipaddr",
+            "interviewtime",
+            "RefusedSplit",
+            "pSetter"
 
         ]
 
+        existing_technical = [
+
+            c
+            for c in technical_columns
+            if c in prep.columns
+
+        ]
+
+        empty_cols = st.session_state.get(
+            "empty_cols",
+            []
+        )
+
+        default_remove = list(
+            set(
+                existing_technical
+                + empty_cols
+            )
+        )
+
+        recommended_keep = [
+
+            c
+
+            for c in empty_cols
+
+            if (
+                c.startswith("Q")
+                or c.startswith("D")
+                or "other" in c.lower()
+            )
+
+        ]
+
+        if recommended_keep:
+
+            st.info(
+                "Suggested Review Before Removing:\n\n"
+                + "\n".join(
+                    recommended_keep
+                )
+            )
+
+        columns_to_remove = st.multiselect(
+
+            "Columns To Remove",
+
+            options=list(prep.columns),
+
+            default=[
+                c
+                for c in default_remove
+                if c not in recommended_keep
+            ]
+
+        )
+
         preview_df = prep.drop(
-            columns=drop_cols,
+
+            columns=columns_to_remove,
+
             errors="ignore"
+
         )
 
         st.subheader(
