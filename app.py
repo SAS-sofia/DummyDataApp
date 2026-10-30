@@ -360,7 +360,7 @@ with tab_prepare:
             "🧹 Column Cleanup"
         )
 
-                technical_columns = [
+        technical_columns = [
 
             "lastpage",
             "startlanguage",
