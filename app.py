@@ -360,7 +360,7 @@ with tab_prepare:
             "🧹 Column Cleanup"
         )
 
-        technical_columns = [
+                technical_columns = [
 
             "lastpage",
             "startlanguage",
@@ -369,29 +369,59 @@ with tab_prepare:
             "ipaddr",
             "interviewtime",
             "RefusedSplit",
-            "pSetter"
+            "pSetter",
+
+            "pMode",
+            "pPhoneType",
+            "pPhonetype"
 
         ]
 
         existing_technical = [
 
             c
+
             for c in technical_columns
+
             if c in prep.columns
 
         ]
 
-        empty_cols = st.session_state.get(
-            "empty_cols",
-            []
-        )
+        empty_cols = [
 
-        default_remove = list(
-            set(
-                existing_technical
-                + empty_cols
+            c
+
+            for c in st.session_state.get(
+                "empty_cols",
+                []
             )
-        )
+
+            if c in prep.columns
+
+        ]
+
+        review_first = [
+
+            "pMode",
+            "pPhoneType",
+            "pPhonetype"
+
+        ]
+
+        default_remove = [
+
+            c
+
+            for c in list(
+                set(
+                    existing_technical
+                    + empty_cols
+                )
+            )
+
+            if c not in review_first
+
+        ]
 
         recommended_keep = [
 
@@ -407,6 +437,38 @@ with tab_prepare:
 
         ]
 
+        # =====================================
+        # MODE VALIDATION
+        # =====================================
+
+        validation_cols = [
+
+            c
+
+            for c in [
+                "pMode",
+                "mode",
+                "pPhoneType",
+                "pPhonetype"
+            ]
+
+            if c in prep.columns
+
+        ]
+
+        if validation_cols:
+
+            st.subheader(
+                "✅ Mode Validation"
+            )
+
+            st.dataframe(
+                prep[
+                    validation_cols
+                ].head(20),
+                use_container_width=True
+            )
+
         if recommended_keep:
 
             st.info(
@@ -416,6 +478,19 @@ with tab_prepare:
                 )
             )
 
+        st.info(
+            """
+Review pMode / pPhoneType against mode first.
+Once validated, add them to the removal list.
+"""
+        )
+
+        if "preview_dd" not in st.session_state:
+
+            st.session_state[
+                "preview_dd"
+            ] = prep.copy()
+
         columns_to_remove = st.multiselect(
 
             "Columns To Remove",
@@ -423,20 +498,33 @@ with tab_prepare:
             options=list(prep.columns),
 
             default=[
+
                 c
+
                 for c in default_remove
-                if c not in recommended_keep
-            ]
+
+                if (
+                    c not in recommended_keep
+                    and c in prep.columns
+                )
+
+            ],
+
+            key="columns_to_remove"
 
         )
 
-        preview_df = prep.drop(
+                preview_df = prep.drop(
 
             columns=columns_to_remove,
 
             errors="ignore"
 
         )
+
+        st.session_state[
+            "preview_dd"
+        ] = preview_df
 
         st.subheader(
             "Preview"
@@ -447,12 +535,10 @@ with tab_prepare:
             use_container_width=True
         )
 
-        st.session_state[
-            "prepared_dd"
-        ] = preview_df
-
         csv = (
-            preview_df
+            st.session_state[
+                "preview_dd"
+            ]
             .to_csv(index=False)
             .encode("utf-8")
         )
