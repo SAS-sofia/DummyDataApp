@@ -62,6 +62,81 @@ def create_mode(df):
         calc_mode,
         axis=1
     )
+    
+    # =====================================
+    # INTERNAL MATCHING SOURCE
+    # =====================================
+    
+    def get_source(row):
+    
+        try:
+    
+            pmode = int(
+                row[pmode_col]
+            )
+    
+        except:
+    
+            return None
+    
+        try:
+    
+            pphone = int(
+                row[phonetype_col]
+            )
+    
+        except:
+    
+            pphone = None
+    
+        if pmode == 1 and pphone == 1:
+            return "phone_ll"
+    
+        if pmode == 1 and pphone == 2:
+            return "phone_cell"
+    
+        if pmode == 3:
+            return "online"
+    
+        if pmode == 2:
+            return "email"
+    
+        return None
+    
+    df["_sample_source"] = df.apply(
+        get_source,
+        axis=1
+    )
+    
+    return df
+
+def renumber_modes(df):
+
+    if "mode" not in df.columns:
+        return df
+
+    existing = sorted(
+        df["mode"]
+        .dropna()
+        .unique()
+        .tolist()
+    )
+
+    mapping = {
+
+        old: new
+
+        for new, old in enumerate(
+            existing,
+            start=1
+        )
+
+    }
+
+    df["mode"] = (
+        df["mode"]
+        .map(mapping)
+    )
 
     return df
 
@@ -307,6 +382,8 @@ with tab_prepare:
 
         prep = create_mode(prep)
 
+        prep = renumber_modes(prep)
+
         prep = move_mode_next_to_pmode(prep)
 
         prep = clean_submitdate(prep)
@@ -373,7 +450,9 @@ with tab_prepare:
 
             "pMode",
             "pPhoneType",
-            "pPhonetype"
+            "pPhonetype",
+            
+            "_sample_source"
 
         ]
 
